@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+.idea
+.DS_Store
+build
+public/dist
+public/scss/includes/sprites/
+views/release
+logs/
+public/**/*manifest.json
+public/scripts/tpl2js
