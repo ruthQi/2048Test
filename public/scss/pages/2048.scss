@@ -1,9 +1,33 @@
+body, html{
+    height: 100%;
+}
+body{
+    padding: 0px;
+    margin: 0px;
+    background-color: #fff;
+    font-size: 12px;
+}
+#outer{
+    height:100%;
+    overflow:hidden;
+    position:relative;
+    width:100%;
+}
+#middle{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+#container{
+    margin: 0 auto;
+}
 
 @font-face {
     font-family: 'Hammersmith One';
     font-style: normal;
     font-weight: 400;
-    src: local('Hammersmith One'), local('HammersmithOne'), url(../fonts/HammersmithOne-Regular.woff) format('woff');
+    src: local('Hammersmith One'), local('HammersmithOne'), url(../../../scripts/assets/HammersmithOne-Regular.woff) format('woff');
 }
 
 .btn{
