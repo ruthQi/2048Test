@@ -401,7 +401,7 @@ class Game{
 
       this.steps++;
       this.updateScore(true);
-      //this.makeRandomTile();
+      this.makeRandomTile();
 
       var failed = !this.moveTiles(37, true) && !this.moveTiles(38, true) &&  
                      !this.moveTiles(39, true) && !this.moveTiles(40, true);
@@ -432,7 +432,7 @@ class Game{
       });
       return true;
    }
-   showGameOver(){
+   showGameOver(show){
       if(!this.overScene){
          this.overScene = new Hilo.Container({
              id: 'over',
@@ -518,7 +518,8 @@ class Game{
                onUpdate: function(){
                   console.log(this.target)
                   let value = this.target.value;
-                  scoreElem.innerHTML = value //+ 0.5 >> 0;
+                  //console.log((value + 0.5)>>0)
+                  scoreElem.innerHTML = value + 0.5 >> 0;//(value + 0.5)>>0相当于parseInt
                }
             })
          }else{
