@@ -166,6 +166,80 @@ class Game{
       }
       this.tileCache = this.tileCache.concat(this.tileMap.getAllTiles());
       this.tileMap.reset();
+      //初始化格子容器
+      if(!this.tileContainer){
+         this.tileContainer = new Hilo.Container({
+            id: 'tileContainer',
+            width: this.width,
+            height: this.height
+         })
+         this.stage.addChild(this.tileContainer);
+      }
+      this.tileContainer.removeAllChildren();
+      this.initToolBar();
+      //放置初始格子
+      var numStartTiles = 2, startTiles = [];
+      //初始化2个格子
+      /*步骤：1.生成一个4*4的数组，并创建16个格子放入数组；
+               2.初始化时，从数组取出2个，获取空的随机位置，然后放入格子；
+               3.获取生成的随机数（2或者4），改变格子的数字；
+               4.并在数组中相应的位置放入格子对象；
+               5.把此格子加入到父容器中*/
+      while(numStartTiles--){
+         var tile = this.tileCache.pop();
+         var pos = this.tileMap.getRandomEmptyPosition();
+         tile.setPosition(pos.x, pos.y);//设置放置格子的位置
+         tile.change(Tile.randomNumber(1, 2));//设置放置格子的数字
+         this.tileMap.set(pos.x, pos.y, tile);
+         this.tileContainer.addChild(tile);
+         this.maxNum = Math.max(this.maxNum, tile.number)
+      }
+   }
+   initToolBar(){
+      if(!this.toolBar){
+         this.toolBar = new Hilo.Container({
+            id: 'toolbar',
+            width: this.width,
+            height: this.height
+         });
+         var restartBtn = new Hilo.Bitmap({
+            id: 'restartBtn',
+            image: this.loader.get('restartBtn').content,
+            scaleX: 0.4,
+            scaleY: 0.4
+         }).on(Hilo.event.POINTER_START, ()=>{
+            this.startGame();
+         })
+         restartBtn.x = this.width - restartBtn.getScaledWidth() - Tile.startX;
+         restartBtn.y = 20;
+         var scoreView = new Hilo.DOMElement({
+            id: 'scoreView',
+            width: 70,
+            height: 45,
+            element: Hilo.createElement('div', {
+               className: 'info-box',
+               innerHTML: '<p class="small-text">SCORE</p><p id="score" class="number">'+ this.score +'</p>'
+            })
+         });
+         scoreView.x = Tile.startX;
+         scoreView.y = 20;
+
+         var bestView = new Hilo.DOMElement({
+            id: 'bestView',
+            width: 70,
+            height: 45,
+            element: Hilo.createElement('div', {
+               className: 'info-box',
+               innerHTML: '<p class="small-text">BEST</p><p id="best" class="number">'+ this.best +'</p>',
+            })
+         });
+         bestView.x = scoreView.x + bestView.getScaledWidth() + 20;
+         bestView.y = 20;
+
+         this.toolBar.addChild(restartBtn, scoreView, bestView);
+      }
+      this.stage.addChild(this.toolBar);
+      this.updateScore();
    }
    initTiles(){
       let margin = 30, border = 10;
@@ -192,9 +266,229 @@ class Game{
       //初始化瓦片格子
       this.tileMap = new TileMap(4, 4);
       var numStartTiles = 2, startTiles = [];
+      //创建格子缓存池
+      for(var i = 0;i <= this.tileMap.length; i++){
+         var tile = new Tile(2, {
+            size: Tile.tileSize,
+            pivotX: Tile.tileSize * 0.5,
+            pivotY: Tile.tileSize * 0.5
+         })
+         this.tileCache.push(tile);
+      }
    }
    moveTiles(direction, onlyCheck){
-      console.log('----------',direction)
+      //console.log('----------',direction, onlyCheck)
+      if(!onlyCheck && this.moving){
+         return;
+      }
+      if(!onlyCheck){
+         this.moving = true;
+      }
+      this.lastScore = this.score;
+      var isVertival = direction == 38 || direction == 40;//上或下
+      var start = direction == 37 || direction == 38 ? 0 : this.tileMap.width -1;
+      var sign = direction == 37 || direction == 38 ? 1 : -1;
+      var x, y, tile, lastTile, index, checking, doMoving = false, tweenCount = 0;
+      for(var i = 0; i < this.tileMap.width; i++){
+         lastTile = null;
+         index = 0;
+         checking = true;
+         //console.log(i,'00000000000000000000')
+         for(var j = 0; j < this.tileMap.width; j++){
+            x = isVertival ? i : (start + sign * j);
+            y = isVertival ? (start + sign * j) : i;
+            tile = this.tileMap.get(x, y);
+            //console.log(i,j,checking)
+            if(checking && tile){
+               if(lastTile && lastTile.number == tile.number){
+                  //预处理可以合并的相邻格子
+                  if(onlyCheck) return true;
+                  this.tileMap.set(tile.tileX, tile.tileY, null);
+                  this.tileCache.push(tile);
+                  lastTile.mergeTile = tile;
+                  tile.srcTile = lastTile;
+                  lastTile = null;
+               }else{
+                  //更新格子的位置
+                  index++;
+                  lastTile = tile;
+                  var destX = isVertival ? i : start + sign * (index - 1);
+                  var destY = isVertival ? start + sign * (index- 1) : i;
+                  if(onlyCheck){
+                      if(tile.tileX != destX || tile.tileY != destY) return true;
+                  }else{
+                     tile.oldX = tile.tileX;
+                     tile.oldY = tile.tileY;
+                     this.tileMap.move(destX, destY, tile);
+                  }
+               }
+            }else if(!checking && tile){
+               //console.log('ooooooooooooooooooo')
+               var pos = Tile.getPosition(tile.tileX, tile.tileY);
+               if(tile.tileX != tile.oldX || tile.tileY != tile.oldY){
+                  //移动格子
+                  doMoving = true;
+                  tweenCount++;
+                  Hilo.Tween.to(tile, {
+                     x:pos.x + tile.pivotX, 
+                     y:pos.y + tile.pivotY
+                  }, {
+                     time:100, 
+                     onComplete:(tween) => {
+                        var target = tween.target;
+                        target.oldX = -1;
+                        target.oldY = -1;
+                        if(!--tweenCount) this.onMoveComplete(true);
+                     }
+                  });
+              }
+              
+              var mergeTile = tile.mergeTile;
+              if(mergeTile){
+                  //移动要合并的格子
+                  doMoving = true;
+                  tweenCount++;
+                  //确保移动的格子在最上层
+                  if(tile.depth > mergeTile.depth){
+                      tile.parent.swapChildren(tile, mergeTile);
+                  }
+                  Hilo.Tween.to(mergeTile, {
+                     x:pos.x + mergeTile.pivotX, 
+                     y:pos.y + mergeTile.pivotY
+                  }, {
+                     time:100, 
+                     onComplete:(tween) => {
+                        var target = tween.target, srcTile = target.srcTile;
+                        target.removeFromParent();
+                        target.srcTile = null;
+                        //console.log(srcTile)
+                        srcTile.change(srcTile.number * 2);
+                        srcTile.mergeTile = null;
+                        Hilo.Tween.from(srcTile, {
+                           scaleX:0.3, 
+                           scaleY:0.3
+                        }, {
+                           time:100, 
+                           //ease:bounce, 
+                           onComplete:(tween) => {
+                              if(!--tweenCount) this.onMoveComplete(true);
+                           }
+                        });
+                     }
+                  });
+                  //增加分数
+                  this.addScore(tile.number);
+              }
+            }
+            //更新完一列(行)格子后，开始移动或合并格子
+            //遍历万一遍之后，重置j的值，再遍历一次j,移动格子的位置
+            if(!onlyCheck && checking && j >= this.tileMap.width - 1){
+               j = -1;
+               checking = false;
+            }
+         }
+      }
+      //无法移动或合并
+      if(!doMoving){
+         if(onlyCheck) return false;
+         this.onMoveComplete(false);
+      }
+      return doMoving;
+   }
+   onMoveComplete(moved){
+      this.moving = false;
+      if(!moved) return;
+
+      this.steps++;
+      this.updateScore(true);
+      //this.makeRandomTile();
+
+      var failed = !this.moveTiles(37, true) && !this.moveTiles(38, true) &&  
+                     !this.moveTiles(39, true) && !this.moveTiles(40, true);
+      if(failed){
+         this.showGameOver(true);
+      }
+   }
+   makeRandomTile(){
+      //随机获取一个空格位置
+      var position = this.tileMap.getRandomEmptyPosition();
+      if(!position) return false;
+
+      //随机产生2的指数幂
+      var random = Math.random();
+      var exponent = random <= 0.75 ? 1 : random > 0.75 && random <= 0.99 ? 2 : 3;
+      var randomNumber = Math.pow(2, exponent);
+
+      //复用缓存格子
+      var tile = this.tileCache.pop();
+      tile.change(randomNumber);
+      tile.setPosition(position.x, position.y);
+      this.tileMap.set(position.x, position.y, tile);
+      this.tileContainer.addChild(tile);
+      Hilo.Tween.from(tile, {
+         alpha:0
+      }, {
+         time:100
+      });
+      return true;
+   }
+   showGameOver(){
+      if(!this.overScene){
+         this.overScene = new Hilo.Container({
+             id: 'over',
+             width: this.width,
+             height: this.height
+         });
+
+         var bg = new Hilo.DOMElement({
+            width: this.width,
+            height: this.height,
+            alpha: 0.6,
+            element: Hilo.createElement('div', {
+               style: {
+                  position: 'absolute',
+                  background: '#000'
+               }
+            })
+         });
+
+         var msg = new Hilo.DOMElement({
+            width: this.width,
+            height: 50,
+            y: 170,
+            element: Hilo.createElement('div', {
+               innerHTML: 'Game Over',
+               className: 'over',
+               style: {
+                  position: 'absolute'
+               }
+            })
+         });
+
+         var startBtn = new Hilo.DOMElement({
+            id: 'startBtn',
+            width: 200,
+            height: 45,
+            element: Hilo.createElement('div', {
+               innerHTML: 'Try Again',
+               className: 'btn'
+            })
+         }).on(Hilo.event.POINTER_START, () => {
+            this.showGameOver(false);
+            this.startGame();
+         });
+         startBtn.x = (this.width - startBtn.getScaledWidth())/2;
+         startBtn.y = msg.y + 100;
+
+         this.overScene.addChild(bg, msg, startBtn);
+      }
+
+      if(show){
+         this.state = 'over';
+         this.stage.addChild(this.overScene);
+      }else{
+         this.stage.removeChild(this.overScene);
+      }
    }
    saveBestScore(){
       let best = 0;
@@ -224,7 +518,7 @@ class Game{
                onUpdate: function(){
                   console.log(this.target)
                   let value = this.target.value;
-                  scoreElem.innerHTML = value + 0.5;
+                  scoreElem.innerHTML = value //+ 0.5 >> 0;
                }
             })
          }else{

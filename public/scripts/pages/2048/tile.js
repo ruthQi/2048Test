@@ -7,7 +7,7 @@
 var Tile = Hilo.Class.create({
    Extends: Hilo.DOMElement,
    constructor: function(number, props){
-      this.tile.superclass.constructor.call(this, props);
+      Tile.superclass.constructor.call(this, props);
       this.width = this.height = props.size;
       var elem = this.drawable.domElement, style = elem.style;
       var vendor = Hilo.browser.jsVendor;
@@ -25,15 +25,18 @@ var Tile = Hilo.Class.create({
    tileY: 0,
    number: 0,
    change: function(number){
-      if(number <= 0) return;
-         var elem = this.drawable.domElement, style = elem.style;
-         elem.innerHTML = number;
-         var color = Tile.colors[number];
-         style.backgroundColor = color && color.bg;
-         style.color = color && color.font || '#fff';
-         style.fontSize = (color && color.fontSize || 18) + 'px';
-         this.number = number;
-      },
+      if(number <= 0){
+         return;
+      } 
+      //console.log(this.drawable.domElement)
+      var elem = this.drawable.domElement, style = elem.style;
+      elem.innerHTML = number;
+      var color = Tile.colors[number];
+      style.backgroundColor = color && color.bg;
+      style.color = color && color.font || '#fff';
+      style.fontSize = (color && color.fontSize || 18) + 'px';
+      this.number = number;
+   },
 
    setPosition: function(tileX, tileY){
       var position = Tile.getPosition(tileX, tileY);
@@ -58,8 +61,8 @@ var Tile = Hilo.Class.create({
       randomNumber: function(min, max){
          max = max || 11;
          min = min || 1;
-         var exponent = Math.floor(Math.random()*(max - min + 1)) + min;
-         return Math.pow(2, exponent);
+         var exponent = Math.floor(Math.random()*(max - min + 1)) + min;//[1, 3),floor之后为1，或2
+         return Math.pow(2, exponent);//2或4，Math.pow(x, y):表示x的y次幂
       },
 
       colors: {
